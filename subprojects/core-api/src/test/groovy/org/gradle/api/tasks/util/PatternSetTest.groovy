@@ -20,6 +20,7 @@ import org.apache.tools.ant.DirectoryScanner
 import org.gradle.api.file.FileTreeElement
 import org.gradle.api.file.RelativePath
 import org.gradle.api.specs.Spec
+import org.gradle.api.specs.Specs
 import org.junit.After
 import org.junit.Test
 import spock.lang.Issue
@@ -67,12 +68,30 @@ class PatternSetTest extends AbstractTestForPatternSet {
         other.include({ true } as Spec)
         other.exclude({ false } as Spec)
         patternSet.copyFrom(other)
-        assertThat(patternSet.includes, equalTo(['a', 'b'] as Set))
-        assertThat(patternSet.excludes, equalTo(['c'] as Set))
-        assertThat(patternSet.includes, not(sameInstance(other.includes)))
-        assertThat(patternSet.excludes, not(sameInstance(other.excludes)))
-        assertThat(patternSet.includeSpecs, equalTo(other.includeSpecs))
-        assertThat(patternSet.excludeSpecs, equalTo(other.excludeSpecs))
+        assertThat(patternSet.includes, sameInstance(other.includes))
+        assertThat(patternSet.excludes, sameInstance(other.excludes))
+        assertThat(patternSet.includeSpecs, sameInstance(other.includeSpecs))
+        assertThat(patternSet.excludeSpecs, sameInstance(other.excludeSpecs))
+    }
+
+    @Test(expected = UnsupportedOperationException)
+    void includesReturnImmutableView() {
+        patternSet.getIncludes().add("foo")
+    }
+
+    @Test(expected = UnsupportedOperationException)
+    void excludesReturnImmutableView() {
+        patternSet.getExcludes().add("foo")
+    }
+
+    @Test(expected = UnsupportedOperationException)
+    void includeSpecsReturnImmutableView() {
+        patternSet.getIncludeSpecs().add(Specs.satisfyAll())
+    }
+    
+    @Test(expected = UnsupportedOperationException)
+    void excludeSpecsReturnImmutableView() {
+        patternSet.getExcludeSpecs().add(Specs.satisfyAll())
     }
 
     @Test

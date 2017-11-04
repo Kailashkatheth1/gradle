@@ -19,6 +19,7 @@ package org.gradle.api.internal.file;
 import groovy.lang.Closure;
 import org.gradle.api.file.FileTreeElement;
 import org.gradle.api.specs.Spec;
+import org.gradle.api.tasks.util.PatternFilterable;
 import org.gradle.api.tasks.util.PatternSet;
 
 // TODO: this doesn't quite guarantee immutability, because the source may be holding closures that are doing god knows what
@@ -34,7 +35,7 @@ public class ImmutablePatternSet extends PatternSet {
 
     private ImmutablePatternSet(PatternSet source) {
         super(source);
-        copyFrom(source);
+        doCopyFrom(source);
     }
 
     @Override
@@ -99,6 +100,11 @@ public class ImmutablePatternSet extends PatternSet {
 
     @Override
     public PatternSet exclude(Closure closure) {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public PatternSet copyFrom(PatternFilterable sourcePattern) {
         throw new UnsupportedOperationException();
     }
 }

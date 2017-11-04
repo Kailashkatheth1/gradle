@@ -16,6 +16,7 @@
 
 package org.gradle.api.tasks.util;
 
+import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import groovy.lang.Closure;
 import org.gradle.api.Action;
@@ -28,9 +29,7 @@ import org.gradle.api.tasks.util.internal.PatternSetAntBuilderDelegate;
 import org.gradle.api.tasks.util.internal.PatternSpecFactory;
 import org.gradle.internal.typeconversion.NotationParser;
 import org.gradle.internal.typeconversion.NotationParserBuilder;
-import org.gradle.util.CollectionUtils;
 
-import java.util.Collections;
 import java.util.Set;
 
 /**
@@ -41,10 +40,10 @@ public class PatternSet implements AntBuilderAware, PatternFilterable {
     private static final NotationParser<Object, String> PARSER = NotationParserBuilder.toType(String.class).fromCharSequence().toComposite();
     private final PatternSpecFactory patternSpecFactory;
 
-    private final Set<String> includes = Sets.newLinkedHashSet();
-    private final Set<String> excludes = Sets.newLinkedHashSet();
-    private final Set<Spec<FileTreeElement>> includeSpecs = Sets.newLinkedHashSet();
-    private final Set<Spec<FileTreeElement>> excludeSpecs = Sets.newLinkedHashSet();
+    private ImmutableSet<String> includes = ImmutableSet.of();
+    private ImmutableSet<String> excludes = ImmutableSet.of();
+    private ImmutableSet<Spec<FileTreeElement>> includeSpecs = ImmutableSet.of();
+    private ImmutableSet<Spec<FileTreeElement>> excludeSpecs = ImmutableSet.of();
     private boolean caseSensitive = true;
 
     public PatternSet() {
@@ -75,16 +74,16 @@ public class PatternSet implements AntBuilderAware, PatternFilterable {
         if (caseSensitive != that.caseSensitive) {
             return false;
         }
-        if (excludeSpecs != null ? !excludeSpecs.equals(that.excludeSpecs) : that.excludeSpecs != null) {
+        if (!excludeSpecs.equals(that.excludeSpecs)) {
             return false;
         }
-        if (excludes != null ? !excludes.equals(that.excludes) : that.excludes != null) {
+        if (!excludes.equals(that.excludes)) {
             return false;
         }
-        if (includeSpecs != null ? !includeSpecs.equals(that.includeSpecs) : that.includeSpecs != null) {
+        if (!includeSpecs.equals(that.includeSpecs)) {
             return false;
         }
-        if (includes != null ? !includes.equals(that.includes) : that.includes != null) {
+        if (!includes.equals(that.includes)) {
             return false;
         }
 
@@ -93,10 +92,10 @@ public class PatternSet implements AntBuilderAware, PatternFilterable {
 
     @Override
     public int hashCode() {
-        int result = includes != null ? includes.hashCode() : 0;
-        result = 31 * result + (excludes != null ? excludes.hashCode() : 0);
-        result = 31 * result + (includeSpecs != null ? includeSpecs.hashCode() : 0);
-        result = 31 * result + (excludeSpecs != null ? excludeSpecs.hashCode() : 0);
+        int result = includes.hashCode();
+        result = 31 * result + excludes.hashCode();
+        result = 31 * result + includeSpecs.hashCode();
+        result = 31 * result + excludeSpecs.hashCode();
         result = 31 * result + (caseSensitive ? 1 : 0);
         return result;
     }
@@ -106,26 +105,26 @@ public class PatternSet implements AntBuilderAware, PatternFilterable {
     }
 
     protected PatternSet doCopyFrom(PatternSet from) {
-        includes.clear();
-        excludes.clear();
-        includeSpecs.clear();
-        excludeSpecs.clear();
         caseSensitive = from.caseSensitive;
 
         if (from instanceof IntersectionPatternSet) {
+            includes = ImmutableSet.of();
+            excludes = ImmutableSet.of();
+            excludeSpecs = ImmutableSet.of();
+
             PatternSet other = ((IntersectionPatternSet) from).other;
             PatternSet otherCopy = new PatternSet(other).copyFrom(other);
             PatternSet intersectCopy = new IntersectionPatternSet(otherCopy);
-            intersectCopy.includes.addAll(from.includes);
-            intersectCopy.excludes.addAll(from.excludes);
-            intersectCopy.includeSpecs.addAll(from.includeSpecs);
-            intersectCopy.excludeSpecs.addAll(from.excludeSpecs);
-            includeSpecs.add(intersectCopy.getAsSpec());
+            intersectCopy.include(from.includes);
+            intersectCopy.exclude(from.excludes);
+            intersectCopy.includeSpecs(from.includeSpecs);
+            intersectCopy.excludeSpecs(from.excludeSpecs);
+            includeSpecs = ImmutableSet.of(intersectCopy.getAsSpec());
         } else {
-            includes.addAll(from.includes);
-            excludes.addAll(from.excludes);
-            includeSpecs.addAll(from.includeSpecs);
-            excludeSpecs.addAll(from.excludeSpecs);
+            includes = from.includes;
+            excludes = from.excludes;
+            includeSpecs = from.includeSpecs;
+            excludeSpecs = from.excludeSpecs;
         }
 
         return this;
@@ -224,24 +223,26 @@ public class PatternSet implements AntBuilderAware, PatternFilterable {
     }
 
     public PatternSet setIncludes(Iterable<String> includes) {
-        this.includes.clear();
+        this.includes = ImmutableSet.of();
         return include(includes);
     }
 
     public PatternSet include(String... includes) {
-        Collections.addAll(this.includes, includes);
+        this.includes = Sets.union(this.includes, ImmutableSet.copyOf(includes)).immutableCopy();
         return this;
     }
 
     public PatternSet include(Iterable includes) {
+        ImmutableSet.Builder<String> builder = ImmutableSet.builder();
         for (Object include : includes) {
-            this.includes.add(PARSER.parseNotation(include));
+            builder.add(PARSER.parseNotation(include));
         }
+        this.includes = Sets.union(this.includes, ImmutableSet.copyOf(builder.build())).immutableCopy();
         return this;
     }
 
     public PatternSet include(Spec<FileTreeElement> spec) {
-        includeSpecs.add(spec);
+        includeSpecs(ImmutableSet.of(spec));
         return this;
     }
 
@@ -254,7 +255,7 @@ public class PatternSet implements AntBuilderAware, PatternFilterable {
     }
 
     public PatternSet setExcludes(Iterable<String> excludes) {
-        this.excludes.clear();
+        this.excludes = ImmutableSet.of();
         return exclude(excludes);
     }
 
@@ -271,7 +272,7 @@ public class PatternSet implements AntBuilderAware, PatternFilterable {
     This can't be called just include, because it has the same erasure as include(Iterable<String>).
      */
     public PatternSet includeSpecs(Iterable<Spec<FileTreeElement>> includeSpecs) {
-        CollectionUtils.addAll(this.includeSpecs, includeSpecs);
+        this.includeSpecs = Sets.union(this.includeSpecs, ImmutableSet.copyOf(includeSpecs)).immutableCopy();
         return this;
     }
 
@@ -281,24 +282,26 @@ public class PatternSet implements AntBuilderAware, PatternFilterable {
     }
 
     public PatternSet exclude(String... excludes) {
-        Collections.addAll(this.excludes, excludes);
+        this.excludes = Sets.union(this.excludes, ImmutableSet.copyOf(excludes)).immutableCopy();
         return this;
     }
 
     public PatternSet exclude(Iterable excludes) {
+        ImmutableSet.Builder<String> builder = ImmutableSet.builder();
         for (Object exclude : excludes) {
-            this.excludes.add(PARSER.parseNotation(exclude));
+            builder.add(PARSER.parseNotation(exclude));
         }
+        this.excludes = Sets.union(this.excludes, ImmutableSet.copyOf(builder.build())).immutableCopy();
         return this;
     }
 
     public PatternSet exclude(Spec<FileTreeElement> spec) {
-        excludeSpecs.add(spec);
+        excludeSpecs(ImmutableSet.of(spec));
         return this;
     }
 
     public PatternSet excludeSpecs(Iterable<Spec<FileTreeElement>> excludes) {
-        CollectionUtils.addAll(this.excludeSpecs, excludes);
+        this.excludeSpecs = Sets.union(this.excludeSpecs, ImmutableSet.copyOf(excludes)).immutableCopy();
         return this;
     }
 
