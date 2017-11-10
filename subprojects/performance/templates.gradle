@@ -63,7 +63,7 @@ task createLotsOfTasks(type: JvmProjectGeneratorTask) {
     sourceFiles = 0
     subProjectTemplates = ['task-creation']
     templateArgs = [
-        taskCount: 15000
+        taskCount: 150000
     ]
     dependencyGraph {
         size = 0
